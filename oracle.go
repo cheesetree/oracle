@@ -3,10 +3,11 @@ package oracle
 import (
 	"database/sql"
 	"fmt"
-	"gorm.io/gorm/utils"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"gorm.io/gorm/utils"
 
 	_ "github.com/godror/godror"
 	"github.com/thoas/go-funk"
@@ -50,7 +51,9 @@ func (d Dialector) Initialize(db *gorm.DB) (err error) {
 	d.DefaultStringSize = 1024
 
 	// register callbacks
-	callbacks.RegisterDefaultCallbacks(db, &callbacks.Config{WithReturning: true})
+	callbacks.RegisterDefaultCallbacks(db, &callbacks.Config{
+		UpdateClauses: []string{"UPDATE", "SET", "WHERE", "ORDER BY", "RETURNING"},
+	})
 
 	d.DriverName = "godror"
 
