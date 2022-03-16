@@ -3,9 +3,11 @@ package oracle
 import (
 	"database/sql"
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"gorm.io/gorm/utils"
 
@@ -30,6 +32,19 @@ type Dialector struct {
 	*Config
 }
 
+var (
+	// CreateClauses create clauses
+	CreateClauses = []string{"INSERT", "VALUES", "ON CONFLICT"}
+	// QueryClauses query clauses
+	QueryClauses = []string{}
+	// UpdateClauses update clauses
+	UpdateClauses = []string{"UPDATE", "SET", "WHERE", "ORDER BY", "RETURNING"}
+	// DeleteClauses delete clauses
+	DeleteClauses = []string{"DELETE", "FROM", "WHERE", "ORDER BY", "LIMIT"}
+
+	defaultDatetimePrecision = 3
+)
+
 func Open(dsn string) gorm.Dialector {
 	return &Dialector{Config: &Config{DSN: dsn}}
 }
@@ -46,13 +61,21 @@ func (d Dialector) Name() string {
 	return "oracle"
 }
 
+// NowFunc return now func
+func (dialector Dialector) NowFunc(n int) func() time.Time {
+	return func() time.Time {
+		round := time.Second / time.Duration(math.Pow10(n))
+		return time.Now().Local().Round(round)
+	}
+}
+
 func (d Dialector) Initialize(db *gorm.DB) (err error) {
 	db.NamingStrategy = Namer{}
 	d.DefaultStringSize = 1024
 
 	// register callbacks
 	callbacks.RegisterDefaultCallbacks(db, &callbacks.Config{
-		UpdateClauses: []string{"UPDATE", "SET", "WHERE", "ORDER BY", "RETURNING"},
+		UpdateClauses: UpdateClauses,
 	})
 
 	d.DriverName = "godror"
@@ -194,7 +217,7 @@ func (d Dialector) DataTypeOf(field *schema.Field) string {
 		}
 
 	case schema.Time:
-		sqlType = "DATE"
+		sqlType = "DATE WITH TIME ZONE"
 		if field.NotNull || field.PrimaryKey {
 			sqlType += " NOT NULL"
 		}
